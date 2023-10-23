@@ -4,6 +4,7 @@ import Toolbox from "../main";
 export interface ToolboxSettings {
     watchFolder: string
     watchTimeout: number
+    watchDelayTime: number
     filpRevise: number
     createNoteToFolder: string
     readingNoteToFolder: string
@@ -24,6 +25,7 @@ export interface ToolboxSettings {
 export const DEFAULT_SETTINGS: ToolboxSettings = {
     watchFolder: "书库",
     watchTimeout: 1000 * 60 * 5,
+    watchDelayTime: 1000 * 3,
     filpRevise: -80,
     createNoteToFolder: "卡片盒",
     readingNoteToFolder: "书库/读书笔记",
@@ -133,6 +135,18 @@ export class ToolboxSettingTab extends PluginSettingTab {
                 .setValue("" + this.plugin.settings.watchTimeout / 1000)
                 .onChange(async (value) => {
                     this.plugin.settings.watchTimeout = Number(value) * 1000
+                    await this.plugin.saveSettings();
+                })
+        )
+
+        new Setting(containerEl)
+        .setName("延迟")
+        .setDesc("延迟多少秒写入跟踪数据，提升在阅读器上的流畅性")
+        .addText((text) =>
+            text
+                .setValue("" + this.plugin.settings.watchDelayTime / 1000)
+                .onChange(async (value) => {
+                    this.plugin.settings.watchDelayTime = Number(value) * 1000
                     await this.plugin.saveSettings();
                 })
         )

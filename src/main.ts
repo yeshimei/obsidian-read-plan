@@ -26,6 +26,7 @@ const PREVIEW_VIEW_CLASS = '.markdown-preview-view'
  */
 
 export default class Toolbox extends Plugin {
+	timer: NodeJS.Timeout
 	settings: ToolboxSettings;
 	itemEl: HTMLElement
 	async onload() {
@@ -42,7 +43,7 @@ export default class Toolbox extends Plugin {
 				this.dailyQuite()
 			}
 
-			// 多义词转跳
+			// 多义笔记转跳
 			if (file.parent.path === this.settings.toPolysemyFolder) {
 				this.toPolysemy(file)
 			}
@@ -54,22 +55,23 @@ export default class Toolbox extends Plugin {
 				let startTime = Date.now()
 				this.updateStatusBar(readingTime, readingProgress)
 				targetEl.onclick = () => {
-					this.app.fileManager.processFrontMatter(file, frontmatter => {
-						if (view.getMode() === 'source') return
-						this.filp(targetEl)
-						
-						if (!this.settings.isWatch) return
-
-						if (!frontmatter.readingTime) frontmatter.readingTime = 0
-						if (!frontmatter.readingProgress) frontmatter.readingProgress = 0
-						frontmatter.readingTime += Math.min(this.settings.watchTimeout, Date.now()  - startTime)
-						frontmatter.readingTimeFormat = this.msTo(frontmatter.readingTime)
-						readingProgress = Number(((targetEl.scrollTop + targetEl.clientHeight) / targetEl.scrollHeight * 100).toFixed(2))
-						if (targetEl.scrollHeight > 0 && frontmatter.readingProgress <= readingProgress) frontmatter.readingProgress = readingProgress
-
-						startTime = Date.now()
-						this.updateStatusBar(frontmatter.readingTime, frontmatter.readingProgress)
-					})
+					if (view.getMode() === 'source') return
+					this.filp(targetEl)
+					if (!this.settings.isWatch) return
+					// 延迟写入跟踪数据以提升阅读器上的翻页流畅性。
+					clearTimeout(this.timer)
+					this.timer = setTimeout(() => {
+						this.app.fileManager.processFrontMatter(file, frontmatter => {
+							if (!frontmatter.readingTime) frontmatter.readingTime = 0
+							if (!frontmatter.readingProgress) frontmatter.readingProgress = 0
+							frontmatter.readingTime += Math.min(this.settings.watchTimeout, Date.now()  - startTime)
+							frontmatter.readingTimeFormat = this.msTo(frontmatter.readingTime)
+							readingProgress = Number(((targetEl.scrollTop + targetEl.clientHeight) / targetEl.scrollHeight * 100).toFixed(2))
+							if (targetEl.scrollHeight > 0 && frontmatter.readingProgress <= readingProgress) frontmatter.readingProgress = readingProgress
+							startTime = Date.now()
+							this.updateStatusBar(frontmatter.readingTime, frontmatter.readingProgress)
+						})
+					}, this.settings.watchDelayTime)
 				}
 			} else {
 				this.clearStatusBar()
@@ -178,7 +180,6 @@ export default class Toolbox extends Plugin {
 			if (targetFile) {
 				const view = this.app.workspace.getLeaf()
 				const LastOpenFiles = this.app.workspace.getLastOpenFiles()
-				const a = this.app.workspace.getLeavesOfType('markdown')
 				if (LastOpenFiles[1] !== file.path) {
 					view.openFile(targetFile)
 					this.notice(`《${file.basename}》是一篇多义笔记，已转跳至《${filiname}》 `)
