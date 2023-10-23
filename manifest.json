@@ -1,0 +1,11 @@
+{
+	"id": "toolbox",
+	"name": "toolbox",
+	"version": "0.0.1",
+	"minAppVersion": "0.15.0",
+	"description": "工具箱",
+	"author": "叫我包仔",
+	"authorUrl": "https://obsidian.md",
+	"fundingUrl": "https://obsidian.md/pricing",
+	"isDesktopOnly": false
+}
