@@ -26,49 +26,48 @@ const PREVIEW_VIEW_CLASS = '.markdown-preview-view'
  */
 
 export default class Toolbox extends Plugin {
-	timer: NodeJS.Timeout
+	timer: number
 	settings: ToolboxSettings;
 	itemEl: HTMLElement
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new ToolboxSettingTab(this.app, this))
-		
-    	this.itemEl = this.addStatusBarItem().createEl("span", { text: "" })
+    	
+		this.itemEl = this.addStatusBarItem().createEl("span", { text: "" })
 
 		this.registerEvent(this.app.workspace.on('file-open', file => {
 			if (!file || file.extension !== 'md') return
 			
-			// 每日一句
-			if (file.path === this.settings.dailyQuiteTo + '.md') {
-				this.dailyQuite()
-			}
-
-			// 多义笔记转跳
-			if (file.parent.path === this.settings.toPolysemyFolder) {
-				this.toPolysemy(file)
-			}
-
+			if (file.path === this.settings.dailyQuiteTo + '.md') this.dailyQuite()
+			if (file.parent.path === this.settings.polysemyFolder) this.polysemy(file)
+			
 			if(file.parent.path === this.settings.watchFolder) {
-				const view = this.app.workspace.getActiveViewOfType(MarkdownView)
-				const targetEl: HTMLElement = view.contentEl.querySelector(PREVIEW_VIEW_CLASS)
-				let { readingTime = 0, readingProgress = 0 } = this.app.metadataCache.getFileCache(file).frontmatter || {}
 				let startTime = Date.now()
+				const view = this.getView()
+				const viewEl = this.getviewEl(view)
+				let { readingTime = 0, readingProgress = 0 } = this.app.metadataCache.getFileCache(file).frontmatter || {}
 				this.updateStatusBar(readingTime, readingProgress)
-				targetEl.onclick = () => {
+				viewEl.onclick = () => {
 					if (view.getMode() === 'source') return
-					this.filp(targetEl)
+					this.filp(viewEl)
 					if (!this.settings.isWatch) return
-					// 延迟写入跟踪数据以提升阅读器上的翻页流畅性。
+					/**
+					 * 延迟写入跟踪数据以提升阅读器上的翻页流畅性
+					 * 
+					 * 在某些老旧阅读器设备或者单文件体积过大，
+					 * 元数据的每次更新都会导致翻页明显滞后，
+					 * 这也是延迟跟踪更新的必要性数据。
+					 * 同时，连续翻页时也同样流畅。
+					 */
 					clearTimeout(this.timer)
-					this.timer = setTimeout(() => {
+					this.timer = window.setTimeout(() => {
 						this.app.fileManager.processFrontMatter(file, frontmatter => {
 							if (!frontmatter.readingTime) frontmatter.readingTime = 0
-							if (!frontmatter.readingProgress) frontmatter.readingProgress = 0
-							frontmatter.readingTime += Math.min(this.settings.watchTimeout, Date.now()  - startTime)
-							frontmatter.readingTimeFormat = this.msTo(frontmatter.readingTime)
-							readingProgress = Number(((targetEl.scrollTop + targetEl.clientHeight) / targetEl.scrollHeight * 100).toFixed(2))
-							if (targetEl.scrollHeight > 0 && frontmatter.readingProgress <= readingProgress) frontmatter.readingProgress = readingProgress
+							frontmatter.readingTime += Math.min(this.settings.watchTimeout, Date.now() - startTime)
 							startTime = Date.now()
+							frontmatter.readingTimeFormat = this.msTo(frontmatter.readingTime)
+							readingProgress = Number(((viewEl.scrollTop + viewEl.clientHeight) / viewEl.scrollHeight * 100).toFixed(2))
+							if (viewEl.scrollHeight > 0 && frontmatter.readingProgress <= readingProgress) frontmatter.readingProgress = readingProgress
 							this.updateStatusBar(frontmatter.readingTime, frontmatter.readingProgress)
 						})
 					}, this.settings.watchDelayTime)
@@ -107,76 +106,83 @@ export default class Toolbox extends Plugin {
 		})
 	}
 
+	getviewEl(view: MarkdownView): HTMLElement {
+		return view.contentEl.querySelector(PREVIEW_VIEW_CLASS)
+	}
+
+	getView() {
+		return this.app.workspace.getActiveViewOfType(MarkdownView)
+	}
+
 	async syncNote (file: TFile) {
-		if (file && file.extension === 'md' && file.parent.path === this.settings.watchFolder) {
-			let content = '---\ntags: 读书笔记\n---'
-			let markdown = await this.app.vault.cachedRead(file)
+		if (file && file.extension !== 'md' || file.parent.path !== this.settings.watchFolder) return
+		let content = '---\ntags: 读书笔记\n---'
+		let markdown = await this.app.vault.cachedRead(file)
 
-			// 出链
-			if (this.settings.isOutlink) {
-				let outlinks = markdown.match(OUTLINK_EXP)
-				outlinks && (content += `\n\n# 出链 \n\n${outlinks.join(' / ')}`)		
-			}
+		// 出链
+		if (this.settings.isOutlink) {
+			let outlinks = markdown.match(OUTLINK_EXP)
+			outlinks && (content += `\n\n# 出链 \n\n${outlinks.join(' / ')}`)		
+		}
 
-			// 书评
-			let bookReview = this.app.metadataCache.getFileCache(file)?.frontmatter?.bookReview
-			bookReview && (content += `\n\n# 书评 \n\n > [!tip] ${bookReview}${this.settings.isBlockId ? " ^" + md5(bookReview) : ''}`)
+		// 书评
+		let bookReview = this.app.metadataCache.getFileCache(file)?.frontmatter?.bookReview
+		bookReview && (content += `\n\n# 书评 \n\n > [!tip] ${bookReview}${this.settings.isBlockId ? " ^" + md5(bookReview) : ''}`)
 
-			// 划线
-			let reslut = []
-				.concat(markdown.match(/#(.*)|==(.+?)==/g))
-				.filter(Boolean)
-				.map((p: string) => {
-					if (/#.*/g.test(p)) return p
-					let id = /%%\^(.*)\^%%/g.exec(p)
-					let text = /==(.+?)(%%💬|%%\^)/g.exec(p)
-					let idea = p.match(/%%💬(.+?)💬%%/g)
-					return {
-						id: id && id[1],
-						text: text && text[1],
-						idea: idea && idea.map(t => t.replace(/%%💬|💬%%/g, ""))
-					}
-				})
-			
-			// 删除空标题
-			reslut = sure(reslut)
-			reslut = sure(reslut)
-			reslut = sure(reslut)
-			
-			reslut.length && (content += '\n\n# 划线 \n\n')
-			reslut.forEach((o: any, i: number) => {
-				if (typeof o === 'string' ) {
-					content += o + '\n\n'
-				} else {
-					content += `> [!quote] [${o.text}](${file.path}#^${o.id}) ${o.idea ? "\n> 💬 " + o.idea.join("\n > 💬 ") : ""}${this.settings.isBlockId ? " ^" + md5(o.text) : ''}\n\n`
+		// 划线
+		let reslut = []
+			.concat(markdown.match(/#(.*)|==(.+?)==/g))
+			.filter(Boolean)
+			.map((p: string) => {
+				if (/#.*/g.test(p)) return p
+				let id = /%%\^(.*)\^%%/g.exec(p)
+				let text = /==(.+?)(%%💬|%%\^)/g.exec(p)
+				let idea = p.match(/%%💬(.+?)💬%%/g)
+				return {
+					id: id && id[1],
+					text: text && text[1],
+					idea: idea && idea.map(t => t.replace(/%%💬|💬%%/g, ""))
 				}
 			})
-
-			
-			const readingNotePath = this.settings.readingNoteToFolder + '/' + file.name
-			const readingNoteFile = this.app.vault.getAbstractFileByPath(readingNotePath)
-
-			if (readingNoteFile) {
-				const sourceContent = await this.app.vault.cachedRead(readingNoteFile as TFile)
-				if (sourceContent !== content) {
-					this.app.vault.modify(readingNoteFile as TFile, content)
-					this.updateMetadata(file)
-					this.notice(file.name + ' - 已同步')
-				}
+		
+		// 删除空标题
+		reslut = sure(reslut)
+		reslut = sure(reslut)
+		reslut = sure(reslut)
+		
+		reslut.length && (content += '\n\n# 划线 \n\n')
+		reslut.forEach((o: any, i: number) => {
+			if (typeof o === 'string' ) {
+				content += o + '\n\n'
 			} else {
-				this.app.vault.create(readingNotePath, content)
+				content += `> [!quote] [${o.text}](${file.path}#^${o.id}) ${o.idea ? "\n> 💬 " + o.idea.join("\n > 💬 ") : ""}${this.settings.isBlockId ? " ^" + md5(o.text) : ''}\n\n`
+			}
+		})
+
+		
+		const readingNotePath = this.settings.readingNoteToFolder + '/' + file.name
+		const readingNoteFile = this.app.vault.getAbstractFileByPath(readingNotePath)
+
+		if (readingNoteFile) {
+			const sourceContent = await this.app.vault.cachedRead(readingNoteFile as TFile)
+			if (sourceContent !== content) {
+				this.app.vault.modify(readingNoteFile as TFile, content)
 				this.updateMetadata(file)
 				this.notice(file.name + ' - 已同步')
 			}
+		} else {
+			this.app.vault.create(readingNotePath, content)
+			this.updateMetadata(file)
+			this.notice(file.name + ' - 已同步')
 		}
 	}
 
-	toPolysemy (file: TFile) {
-		if (!this.settings.isPolysemyTo) return
+	polysemy (file: TFile) {
+		if (!this.settings.isPolysemy) return
 		const to = this.app.metadataCache.getFileCache(file)?.frontmatter?.to
 		if (to) {
 			let filiname = to.match(/\[\[(.*)\]\]/)?.[1]
-			let targetFile = this.openFile(this.settings.toPolysemyFolder + '/' + filiname + '.md')
+			let targetFile = this.openFile(this.settings.polysemyFolder + '/' + filiname + '.md')
 			if (targetFile) {
 				const view = this.app.workspace.getLeaf()
 				const LastOpenFiles = this.app.workspace.getLastOpenFiles()
@@ -245,13 +251,13 @@ export default class Toolbox extends Plugin {
 	}
 
 	toReadingProgress () {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView)
+		const view = this.getView()
 		if (!view) return
 		const file = view.file
 		const readingProgress = file && this.app.metadataCache.getFileCache(file)?.frontmatter?.readingProgress
-		const targetEl = view.contentEl.querySelector(PREVIEW_VIEW_CLASS)
+		const viewEl = this.getviewEl(view)
 		if (readingProgress) {
-			targetEl.scrollTo({ top: targetEl.scrollHeight * readingProgress / 100})
+			viewEl.scrollTo({ top: viewEl.scrollHeight * readingProgress / 100})
 			this.notice(`已转跳至 ${readingProgress} %`)
 		} 
 	}

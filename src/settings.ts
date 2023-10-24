@@ -18,8 +18,8 @@ export interface ToolboxSettings {
     isDailyQuite: boolean
     dailyQuiteFrom: string
     dailyQuiteTo: string
-    toPolysemyFolder: string
-    isPolysemyTo: boolean
+    polysemyFolder: string
+    isPolysemy: boolean
 }
 
 export const DEFAULT_SETTINGS: ToolboxSettings = {
@@ -37,10 +37,10 @@ export const DEFAULT_SETTINGS: ToolboxSettings = {
     isWatch: true,
     isDailyQuite: true,
     isReadingNote: true,
-    isPolysemyTo: true,
+    isPolysemy: true,
     dailyQuiteFrom: "主题盒/收藏夹：句子",
     dailyQuiteTo: "主页",
-    toPolysemyFolder: "卡片盒"
+    polysemyFolder: "卡片盒"
 };
 
 export class ToolboxSettingTab extends PluginSettingTab {
@@ -105,9 +105,9 @@ export class ToolboxSettingTab extends PluginSettingTab {
         .setDesc("在 yaml 中声明 `to: [[实义笔记名]]`，打开声明笔记将自动转跳至实义笔记")
         .addToggle((text) =>
             text
-                .setValue(this.plugin.settings.isPolysemyTo)
+                .setValue(this.plugin.settings.isPolysemy)
                 .onChange(async (value) => {
-                    this.plugin.settings.isPolysemyTo = value
+                    this.plugin.settings.isPolysemy = value
                     await this.plugin.saveSettings();
                 })
         )
@@ -259,9 +259,9 @@ export class ToolboxSettingTab extends PluginSettingTab {
             .setName("指定多义笔记转跳的文件夹")
             .addText((text) =>
                 text
-                    .setValue("" + this.plugin.settings.toPolysemyFolder)
+                    .setValue("" + this.plugin.settings.polysemyFolder)
                     .onChange(async (value) => {
-                        this.plugin.settings.toPolysemyFolder = value
+                        this.plugin.settings.polysemyFolder = value
                         await this.plugin.saveSettings();
                     })
             )
