@@ -1,5 +1,23 @@
 import {App, Editor, TFile } from 'obsidian';
 
+
+export function today(): string {
+    let date = new Date() 
+    let year = date.getFullYear().toString();
+    let month = (date.getMonth() + 1).toString();
+    let day = date.getDate().toString();
+    if (month.length < 2) {
+      month = "0" + month;
+    }
+    if (day.length < 2) {
+      day = "0" + day;
+    }
+  
+    let formattedDate = year + "-" + month + "-" + day;
+    return formattedDate;
+  }
+  
+
 export function sure (obj) {
     return obj.filter((o, i) => {
         if (typeof o === 'string') {

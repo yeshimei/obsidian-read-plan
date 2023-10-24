@@ -20,6 +20,7 @@ export interface ToolboxSettings {
     dailyQuiteTo: string
     polysemyFolder: string
     isPolysemy: boolean
+    isRecordReadingStatus: boolean
 }
 
 export const DEFAULT_SETTINGS: ToolboxSettings = {
@@ -38,6 +39,7 @@ export const DEFAULT_SETTINGS: ToolboxSettings = {
     isDailyQuite: true,
     isReadingNote: true,
     isPolysemy: true,
+    isRecordReadingStatus: true,
     dailyQuiteFrom: "主题盒/收藏夹：句子",
     dailyQuiteTo: "主页",
     polysemyFolder: "卡片盒"
@@ -111,6 +113,19 @@ export class ToolboxSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
         )
+
+        new Setting(containerEl)
+        .setName("跟踪书本的阅读状态")
+        .setDesc("弹窗确定是否记录 readingDate 和 completionDate 两个元数据")
+        .addToggle((text) =>
+            text
+                .setValue(this.plugin.settings.isRecordReadingStatus)
+                .onChange(async (value) => {
+                    this.plugin.settings.isRecordReadingStatus = value
+                    await this.plugin.saveSettings();
+                })
+        )
+
 
 
         containerEl.createEl('h1', { text: "阅读时长及进度"})

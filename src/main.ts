@@ -1,14 +1,14 @@
-import {Plugin, MarkdownView, Editor, Notice, TFile} from 'obsidian';
-import { getBlock, sure } from './helpers';
+import {Plugin, MarkdownView, Editor, Notice, TFile, MomentFormatComponent} from 'obsidian';
+import { today, getBlock, sure } from './helpers';
 
 import {
     ToolboxSettings,
     DEFAULT_SETTINGS,
     ToolboxSettingTab,
 } from "./settings";
-import { InputBox } from './InputBox';
+import { InputBox, } from './InputBox';
 import { md5 } from 'js-md5';
-
+import { Confirm } from './Confirm';
 
 const OUTLINK_EXP = /\[\[(?!.*\.)[^\]]+\]\]/g
 const PREVIEW_VIEW_CLASS = '.markdown-preview-view'
@@ -47,6 +47,8 @@ export default class Toolbox extends Plugin {
 				const viewEl = this.getviewEl(view)
 				let { readingTime = 0, readingProgress = 0 } = this.app.metadataCache.getFileCache(file).frontmatter || {}
 				this.updateStatusBar(readingTime, readingProgress)
+				this.setReadingDate(file)
+				this.setCompletionDate(file)
 				viewEl.onclick = () => {
 					if (view.getMode() === 'source') return
 					this.filp(viewEl)
@@ -58,16 +60,19 @@ export default class Toolbox extends Plugin {
 					 * 元数据的每次更新都会导致翻页明显滞后，
 					 * 这也是延迟跟踪更新的必要性数据。
 					 * 同时，连续翻页时也同样流畅。
+					 * 
 					 */
 					clearTimeout(this.timer)
 					this.timer = window.setTimeout(() => {
 						this.app.fileManager.processFrontMatter(file, frontmatter => {
 							if (!frontmatter.readingTime) frontmatter.readingTime = 0
+							if (!frontmatter.readingProgress) frontmatter.readingProgress = 0
 							frontmatter.readingTime += Math.min(this.settings.watchTimeout, Date.now() - startTime)
 							startTime = Date.now()
 							frontmatter.readingTimeFormat = this.msTo(frontmatter.readingTime)
 							readingProgress = Number(((viewEl.scrollTop + viewEl.clientHeight) / viewEl.scrollHeight * 100).toFixed(2))
 							if (viewEl.scrollHeight > 0 && frontmatter.readingProgress <= readingProgress) frontmatter.readingProgress = readingProgress
+							this.setCompletionDate(file)
 							this.updateStatusBar(frontmatter.readingTime, frontmatter.readingProgress)
 						})
 					}, this.settings.watchDelayTime)
@@ -176,6 +181,22 @@ export default class Toolbox extends Plugin {
 			this.notice(file.name + ' - 已同步')
 		}
 	}
+
+	setReadingDate (file: TFile) {
+		let readingDate = this.app.metadataCache.getFileCache(file).frontmatter?.readingDate
+		if (readingDate || !this.settings.isRecordReadingStatus) return
+		new Confirm(this.app, `《${file.basename}》未过读，是否标记在读？`, res => {
+			res && this.updateFrontmatter(file, 'readingDate', today())
+		}).open()
+	}
+	
+	setCompletionDate (file: TFile) {
+		let { readingProgress = 0, completionDate } = this.app.metadataCache.getFileCache(file).frontmatter || {}
+		if (readingProgress < 100 || completionDate || !this.settings.isRecordReadingStatus) return
+		new Confirm(this.app, `《${file.basename}》进度 100%，是否标记读完？`, res => {
+			res && this.updateFrontmatter(file, 'completionDate', today())
+		}).open()
+	} 
 
 	polysemy (file: TFile) {
 		if (!this.settings.isPolysemy) return
