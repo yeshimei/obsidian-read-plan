@@ -10,7 +10,7 @@
 - [x] 划线，写想法，创建卡片笔记
 - [x] 读书笔记同步
 - [x] 元数据同步
-- [x] 每日一句
+- [x] 展厅
 - [x] 多义笔记转跳
 
 注意，您需要把 pdf，epub，mobi，word 等可读格式，转换为 markdown。对，就是使用原生的阅读方式，因此，它支持移动端和墨水屏阅读器以及双链，dataview 等插件（进行定制化需求）
@@ -84,6 +84,21 @@ sort top DESC, file.mtime DESC
 
 [obsidian 中文论坛中关于 obsidian-toolbox 的一些讨论](https://forum-zh.obsidian.md/t/topic/24904)
 
+# 展厅
+
+在指定笔记中放入声明
+
+```
+%%quote|2%%
+
+%%quote-end%%
+
+```
+
+每次打开笔记，将会从阅读笔记中随机抽取 2 条划线进行展示。
+
+
+![Alt text](resource/image5.png)
 
 # 定制化 obsidian 的一些截图
 
