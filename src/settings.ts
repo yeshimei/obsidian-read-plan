@@ -15,7 +15,6 @@ export interface ToolboxSettings {
     isWatch: boolean
     isReadingNote: boolean
     isDailyQuite: boolean
-    dailyQuiteFrom: string
     dailyQuiteTo: string
     polysemyFolder: string
     isPolysemy: boolean
@@ -38,7 +37,6 @@ export const DEFAULT_SETTINGS: ToolboxSettings = {
     isReadingNote: true,
     isPolysemy: true,
     isRecordReadingStatus: true,
-    dailyQuiteFrom: "主题盒/收藏夹：句子",
     dailyQuiteTo: "主页",
     polysemyFolder: "卡片盒"
 };
@@ -101,7 +99,8 @@ export class ToolboxSettingTab extends PluginSettingTab {
         )
 
         new Setting(containerEl)
-        .setName("每日一句")
+        .setName("展厅")
+        .setDesc( "在指定笔记中的任何位置写 %%quote|n%% \n\n %%quote-end%% \n\n 那么，当每次打开指定笔记时，会从阅读笔记中随机抽取 n 条笔记进行展示")
         .addToggle((text) =>
             text
                 .setValue(this.plugin.settings.isDailyQuite)
@@ -224,24 +223,10 @@ export class ToolboxSettingTab extends PluginSettingTab {
                 })
         ) 
 
-        containerEl.createEl('h1', { text: "每日一句"})
-
-
-        new Setting(containerEl)
-            .setName("来源")
-            .setDesc("指定一篇笔记，作为每日一句的来源，每一个句子用换行分割")
-            .addText((text) =>
-                text
-                    .setValue("" + this.plugin.settings.dailyQuiteFrom)
-                    .onChange(async (value) => {
-                        this.plugin.settings.dailyQuiteFrom = value
-                        await this.plugin.saveSettings();
-                    })
-            )  
+        containerEl.createEl('h1', { text: "展厅"})
 
         new Setting(containerEl)
-        .setName("目标")
-        .setDesc("每日一句添加到哪个笔记的元数据上，推荐使用 viewdata 插件显式在笔记里")
+        .setName("指定哪个笔记")
         .addText((text) =>
             text
                 .setValue("" + this.plugin.settings.dailyQuiteTo)
@@ -266,7 +251,6 @@ export class ToolboxSettingTab extends PluginSettingTab {
             )
 
             containerEl.createEl('h1', { text: "其他"})
-
 
             new Setting(containerEl)
                 .setName("创建卡片笔记放至哪个文件夹")

@@ -295,20 +295,45 @@ export default class Toolbox extends Plugin {
 	}
 
 	async dailyQuite () {
-		if (!this.settings.isDailyQuite) return
+		const file = this.openFile(this.settings.dailyQuiteTo + '.md')
+		let content = await this.app.vault.cachedRead(file)
+		const params = content?.match(/%%(.*)%%/)?.[1]?.split('|')
+		let files: TFile[] = []
 
-		const form = this.openFile(this.settings.dailyQuiteFrom + '.md')
-		const to = this.openFile(this.settings.dailyQuiteTo + '.md')
-
-		if (!form || !to) return
-		const content = (await this.app.vault.cachedRead(form)).replace(/---.*?---/gms, '')
-		const dailyQuites = content.match(/(?<=^\s*)\S.*\S(?=\s*$)/gm)
-		const index = Math.floor(Math.random() * dailyQuites.length)
-		const dailyQuite = dailyQuites[index].split('——')
-		this.updateFrontmatter(to, 'dailyQuiteText', dailyQuite[0])
-		this.updateFrontmatter(to, 'dailyQuiteAuthor', dailyQuite[1])
+		if (params[0] !== 'quote') return
+		let sentences = (await Promise.all((this.app.vault.getMarkdownFiles()
+			.filter(file => file.parent.path === this.settings.readingNoteToFolder)
+			.map(file => {
+				files.push(file)
+				return this.app.vault.cachedRead(file)
+			}))))
+			.map((content, i) => ({ text: content.match(/> \[!quote\] \[.*?\]\(.*?\.md#\^.*?\)/gm) || [], file: files[i]}))
+			.filter(({text}) => text.length)
+			.map(({text, file}) => text.map(text => ({text, file})))
+			.flat(1)
+					
+		const text = this.pick(sentences, Number(params[1]) || 1).map(({text, file}) => text.replace('> [!quote]', `> [!quote] [《${file.basename}》](${file.path}) \n>`)).join('\n\n')
+		content = content.replace(/(%%quote\|\d%%).*(%%quote-end%%)/gs, "$1\n\n" + text + '\n\n $2')
+		this.app.vault.modify(file, content)
 	}
 
+	pick<T>(arr: T[], n: number = 1): T[] {
+	if (n >= arr.length) {
+	  return arr
+	}
+	let result: T[] = []
+	let picked: Set<number> = new Set()
+	for (let i = 0; i < n; i++) {
+	  let index = Math.floor(Math.random() * arr.length)
+	  while (picked.has(index)) {
+		index = Math.floor(Math.random() * arr.length)
+	  }
+	  picked.add(index)
+	  result.push(arr[index])
+	}
+	return result
+  }
+  
 	openFile (path: string) {
 		return this.app.vault.getAbstractFileByPath(path) as TFile
 	}
