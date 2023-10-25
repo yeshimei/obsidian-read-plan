@@ -107,7 +107,7 @@ export default class Toolbox extends Plugin {
 			id: '同步读书笔记',
 			name: '同步读书笔记',
 			icon: 'activity',
-			callback: () => this.app.vault.getMarkdownFiles().filter(file => file?.parent?.path === this.settings.watchFolder).filter(file => this.app.metadataCache.getFileCache(file)?.frontmatter?.tags?.contains(this.settings.readingNoteTag)).forEach(file => this.syncNote(file))
+			callback: () => this.app.vault.getMarkdownFiles().filter(file => file?.parent?.path === this.settings.watchFolder).filter(file => this.app.metadataCache.getFileCache(file)?.frontmatter?.tags?.contains("book")).forEach(file => this.syncNote(file))
 		})
 	}
 

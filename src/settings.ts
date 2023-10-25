@@ -8,7 +8,6 @@ export interface ToolboxSettings {
     filpRevise: number
     createNoteToFolder: string
     readingNoteToFolder: string
-    readingNoteTag: string
     isBlockId: boolean
     isOutlink: boolean
     isFrontmatter: boolean
@@ -30,7 +29,6 @@ export const DEFAULT_SETTINGS: ToolboxSettings = {
     filpRevise: -80,
     createNoteToFolder: "卡片盒",
     readingNoteToFolder: "书库/读书笔记",
-    readingNoteTag: "book",
     isBlockId: true,
     isOutlink: true,
     isFrontmatter: true,
@@ -70,6 +68,17 @@ export class ToolboxSettingTab extends PluginSettingTab {
         ) 
 
         new Setting(containerEl)
+        .setName("跟踪阅读状态")
+        .addToggle((text) =>
+            text
+                .setValue(this.plugin.settings.isRecordReadingStatus)
+                .onChange(async (value) => {
+                    this.plugin.settings.isRecordReadingStatus = value
+                    await this.plugin.saveSettings();
+                })
+        )
+
+        new Setting(containerEl)
         .setName("翻页")
         .addToggle((text) =>
             text
@@ -104,7 +113,7 @@ export class ToolboxSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
         .setName("多义笔记转跳")
-        .setDesc("在 yaml 中声明 `to: [[实义笔记名]]`，打开声明笔记将自动转跳至实义笔记")
+        .setDesc("在 yaml 中声明 `to: [[实义笔记名]]`，打开声明笔记将转跳至实义笔记")
         .addToggle((text) =>
             text
                 .setValue(this.plugin.settings.isPolysemy)
@@ -114,27 +123,13 @@ export class ToolboxSettingTab extends PluginSettingTab {
                 })
         )
 
-        new Setting(containerEl)
-        .setName("跟踪书本的阅读状态")
-        .setDesc("弹窗确定是否记录 readingDate 和 completionDate 两个元数据")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isRecordReadingStatus)
-                .onChange(async (value) => {
-                    this.plugin.settings.isRecordReadingStatus = value
-                    await this.plugin.saveSettings();
-                })
-        )
-
-
-
+    
         containerEl.createEl('h1', { text: "阅读时长及进度"})
         
         new Setting(containerEl)
-        .setName("跟踪哪个文件夹")
+        .setName("跟踪哪个文件夹（同时，为跟踪的笔记打上 book 标签）")
         .addText((text) =>
             text
-                .setPlaceholder('书库')
                 .setValue(this.plugin.settings.watchFolder)
                 .onChange(async (value) => {
                     this.plugin.settings.watchFolder = value;
@@ -193,18 +188,7 @@ export class ToolboxSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             ) 
-            
-        new Setting(containerEl)
-        .setName("同步指定标签")
-        .addText((text) =>
-            text
-                .setValue("" + this.plugin.settings.readingNoteTag)
-                .onChange(async (value) => {
-                    this.plugin.settings.readingNoteTag = value
-                    await this.plugin.saveSettings();
-                })
-        )  
-
+    
         new Setting(containerEl)
         .setName("同步出链")
         .addToggle((text) =>
