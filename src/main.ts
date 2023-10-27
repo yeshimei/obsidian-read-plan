@@ -41,7 +41,7 @@ export default class Toolbox extends Plugin {
 			if (file.path === this.settings.dailyQuiteTo + '.md') this.dailyQuite()
 			if (file.parent.path === this.settings.polysemyFolder) this.polysemy(file)
 			
-			if(file.parent.path === this.settings.watchFolder) {
+			if(file.parent.path === this.settings.folder) {
 				let startTime = Date.now()
 				const view = this.getView()
 				const viewEl = this.getviewEl(view)
@@ -52,7 +52,7 @@ export default class Toolbox extends Plugin {
 				viewEl.onclick = () => {
 					if (view.getMode() === 'source') return
 					this.filp(viewEl)
-					if (!this.settings.isWatch) return
+					if (!this.settings.watch) return
 					/**
 					 * 延迟写入跟踪数据以提升阅读器上的翻页流畅性
 					 * 
@@ -67,7 +67,7 @@ export default class Toolbox extends Plugin {
 						this.app.fileManager.processFrontMatter(file, frontmatter => {
 							if (!frontmatter.readingTime) frontmatter.readingTime = 0
 							if (!frontmatter.readingProgress) frontmatter.readingProgress = 0
-							frontmatter.readingTime += Math.min(this.settings.watchTimeout, Date.now() - startTime)
+							frontmatter.readingTime += Math.min(this.settings.timeout, Date.now() - startTime)
 							startTime = Date.now()
 							frontmatter.readingTimeFormat = this.msTo(frontmatter.readingTime)
 							readingProgress = Number(((viewEl.scrollTop + viewEl.clientHeight) / viewEl.scrollHeight * 100).toFixed(2))
@@ -75,39 +75,39 @@ export default class Toolbox extends Plugin {
 							this.setCompletionDate(file)
 							this.updateStatusBar(frontmatter.readingTime, frontmatter.readingProgress)
 						})
-					}, this.settings.watchDelayTime)
+					}, this.settings.delayTime)
 				}
 			} else {
 				this.clearStatusBar()
 			}
 		}))
 
-		this.settings.isReadingNote && this.addCommand({
+		this.settings.readingNotes && this.addCommand({
 			id: '划线',
 			name: '划线',
 			icon: 'brush',
 			editorCallback: (editor, view: MarkdownView) => this.highlight(editor, view)
 		})
 
-		this.settings.isReadingNote && this.addCommand({
+		this.settings.readingNotes && this.addCommand({
 			id: '创建笔记',
 			name: '创建笔记',
 			icon: 'book',
 			editorCallback: (editor, view: MarkdownView) => this.selectionByCreateNote(editor, view)
 		})
 
-		this.settings.isWatch && this.addCommand({
+		this.settings.watch && this.addCommand({
 			id: '转跳至阅读进度位置',
 			name: '转跳至阅读进度位置',
 			icon: 'album',
 			callback: () => this.toReadingProgress() 
 		})
 
-		this.settings.isReadingNote && this.addCommand({
+		this.settings.readingNotes && this.addCommand({
 			id: '同步读书笔记',
 			name: '同步读书笔记',
 			icon: 'activity',
-			callback: () => this.app.vault.getMarkdownFiles().filter(file => file?.parent?.path === this.settings.watchFolder).filter(file => this.app.metadataCache.getFileCache(file)?.frontmatter?.tags?.contains("book")).forEach(file => this.syncNote(file))
+			callback: () => this.app.vault.getMarkdownFiles().filter(file => file?.parent?.path === this.settings.folder).filter(file => this.app.metadataCache.getFileCache(file)?.frontmatter?.tags?.contains("book")).forEach(file => this.syncNote(file))
 		})
 	}
 
@@ -120,19 +120,19 @@ export default class Toolbox extends Plugin {
 	}
 
 	async syncNote (file: TFile) {
-		if (file && file.extension !== 'md' || file.parent.path !== this.settings.watchFolder) return
+		if (file && file.extension !== 'md' || file.parent.path !== this.settings.folder) return
 		let content = '---\ntags: 读书笔记\n---'
 		let markdown = await this.app.vault.cachedRead(file)
 
 		// 出链
-		if (this.settings.isOutlink) {
+		if (this.settings.outlink) {
 			let outlinks = markdown.match(OUTLINK_EXP)
 			outlinks && (content += `\n\n# 出链 \n\n${outlinks.join(' / ')}`)		
 		}
 
 		// 书评
 		let bookReview = this.app.metadataCache.getFileCache(file)?.frontmatter?.bookReview
-		bookReview && (content += `\n\n# 书评 \n\n > [!tip] ${bookReview}${this.settings.isBlockId ? " ^" + md5(bookReview) : ''}`)
+		bookReview && (content += `\n\n# 书评 \n\n > [!tip] ${bookReview}${this.settings.blockId ? " ^" + md5(bookReview) : ''}`)
 
 		// 划线
 		let reslut = []
@@ -160,12 +160,12 @@ export default class Toolbox extends Plugin {
 			if (typeof o === 'string' ) {
 				content += o + '\n\n'
 			} else {
-				content += `> [!quote] [${o.text}](${file.path}#^${o.id}) ${o.idea ? "\n> 💬 " + o.idea.join("\n > 💬 ") : ""}${this.settings.isBlockId ? " ^" + md5(o.text) : ''}\n\n`
+				content += `> [!quote] [${o.text}](${file.path}#^${o.id}) ${o.idea ? "\n> 💬 " + o.idea.join("\n > 💬 ") : ""}${this.settings.blockId ? " ^" + md5(o.text) : ''}\n\n`
 			}
 		})
 
 		
-		const readingNotePath = this.settings.readingNoteToFolder + '/' + file.name
+		const readingNotePath = this.settings.readingNotesToFolder + '/' + file.name
 		const readingNoteFile = this.app.vault.getAbstractFileByPath(readingNotePath)
 
 		if (readingNoteFile) {
@@ -184,7 +184,7 @@ export default class Toolbox extends Plugin {
 
 	setReadingDate (file: TFile) {
 		let readingDate = this.app.metadataCache.getFileCache(file).frontmatter?.readingDate
-		if (readingDate || !this.settings.isRecordReadingStatus) return
+		if (readingDate || !this.settings.watch) return
 		new Confirm(this.app, `《${file.basename}》未过读，是否标记在读？`, res => {
 			res && this.updateFrontmatter(file, 'readingDate', today())
 		}).open()
@@ -192,14 +192,14 @@ export default class Toolbox extends Plugin {
 	
 	setCompletionDate (file: TFile) {
 		let { readingProgress = 0, completionDate } = this.app.metadataCache.getFileCache(file).frontmatter || {}
-		if (readingProgress < 100 || completionDate || !this.settings.isRecordReadingStatus) return
+		if (readingProgress < 100 || completionDate || !this.settings.watch) return
 		new Confirm(this.app, `《${file.basename}》进度 100%，是否标记读完？`, res => {
 			res && this.updateFrontmatter(file, 'completionDate', today())
 		}).open()
 	} 
 
 	polysemy (file: TFile) {
-		if (!this.settings.isPolysemy) return
+		if (!this.settings.polysemy) return
 		const to = this.app.metadataCache.getFileCache(file)?.frontmatter?.to
 		if (to) {
 			let filiname = to.match(/\[\[(.*)\]\]/)?.[1]
@@ -216,7 +216,7 @@ export default class Toolbox extends Plugin {
 	}
 
 	updateMetadata (file: TFile) {
-		if (this.settings.isFrontmatter) {
+		if (this.settings.frontmatter) {
 			this.updateOutlinkes(file)
 			this.updateHighlightsAndThinks(file)
 		}
@@ -259,7 +259,7 @@ export default class Toolbox extends Plugin {
 	}
 
 	filp (el: HTMLElement) {
-		this.settings.isFilp && (el.scrollTop += el.clientHeight + this.settings.filpRevise)
+		this.settings.filp && (el.scrollTop += el.clientHeight + this.settings.filpRevise)
 	}
 
 	highlight (editor: Editor, view: MarkdownView) {
@@ -302,7 +302,7 @@ export default class Toolbox extends Plugin {
 
 		if (params[0] !== 'quote') return
 		let sentences = (await Promise.all((this.app.vault.getMarkdownFiles()
-			.filter(file => file.parent.path === this.settings.readingNoteToFolder)
+			.filter(file => file.parent.path === this.settings.readingNotesToFolder)
 			.map(file => {
 				files.push(file)
 				return this.app.vault.cachedRead(file)

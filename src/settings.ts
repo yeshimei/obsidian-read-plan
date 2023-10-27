@@ -1,266 +1,254 @@
-import { App, Component, PluginSettingTab, Setting } from "obsidian";
-import Toolbox from "../main";
+import { App, Component, PluginSettingTab, Setting } from "obsidian"
+import Toolbox from "../main"
 
 export interface ToolboxSettings {
-    watchFolder: string
-    watchTimeout: number
-    watchDelayTime: number
+    watch: boolean
+    folder: string
+    timeout: number
+    delayTime: number
+    filp: boolean
     filpRevise: number
-    createNoteToFolder: string
-    readingNoteToFolder: string
-    isBlockId: boolean
-    isOutlink: boolean
-    isFrontmatter: boolean
-    isFilp: boolean
-    isWatch: boolean
-    isReadingNote: boolean
-    isDailyQuite: boolean
+    readingNotes: boolean
+    readingNotesToFolder: string
+    outlink: boolean
+    blockId: boolean
+    frontmatter: boolean
+    dailyQuite: boolean
     dailyQuiteTo: string
+    polysemy: boolean
     polysemyFolder: string
-    isPolysemy: boolean
-    isRecordReadingStatus: boolean
+    createNoteToFolder: string
 }
 
 export const DEFAULT_SETTINGS: ToolboxSettings = {
-    watchFolder: "书库",
-    watchTimeout: 1000 * 60 * 5,
-    watchDelayTime: 1000 * 3,
+    watch: true,
+    folder: "书库",
+    timeout: 1000 * 60 * 5,
+    delayTime: 1000 * 3,
+    filp: true,
     filpRevise: -80,
-    createNoteToFolder: "卡片盒",
-    readingNoteToFolder: "书库/读书笔记",
-    isBlockId: true,
-    isOutlink: true,
-    isFrontmatter: true,
-    isFilp: true,
-    isWatch: true,
-    isDailyQuite: true,
-    isReadingNote: true,
-    isPolysemy: true,
-    isRecordReadingStatus: true,
+    readingNotes: true,
+    readingNotesToFolder: "书库/读书笔记",
+    outlink: true,
+    blockId: true,
+    frontmatter: true,
+    dailyQuite: true,
     dailyQuiteTo: "主页",
-    polysemyFolder: "卡片盒"
-};
+    polysemy: true,
+    polysemyFolder: "卡片盒",
+    createNoteToFolder: "卡片盒",
+}
 
 export class ToolboxSettingTab extends PluginSettingTab {
-    plugin: Toolbox;
+    plugin: Toolbox
 
     constructor(app: App, plugin: Toolbox) {
-        super(app, plugin);
-        this.plugin = plugin;
+        super(app, plugin)
+        this.plugin = plugin
     }
 
     display() {
-        let { containerEl } = this;
-
-        containerEl.empty();
-
-        new Setting(containerEl)
-        .setName("跟踪阅读时间及时长")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isWatch)
-                .onChange(async (value) => {
-                    this.plugin.settings.isWatch = value
-                    await this.plugin.saveSettings();
-                })
-        ) 
+        let { containerEl } = this
+        containerEl.empty()
+        containerEl.createEl("h2", { text: this.plugin.manifest.name })
 
         new Setting(containerEl)
-        .setName("跟踪阅读状态")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isRecordReadingStatus)
-                .onChange(async (value) => {
-                    this.plugin.settings.isRecordReadingStatus = value
-                    await this.plugin.saveSettings();
-                })
-        )
-
-        new Setting(containerEl)
-        .setName("翻页")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isFilp)
-                .onChange(async (value) => {
-                    this.plugin.settings.isFilp = value
-                    await this.plugin.saveSettings();
-                })
-        ) 
-
-        new Setting(containerEl)
-        .setName("读书笔记")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isReadingNote)
-                .onChange(async (value) => {
-                    this.plugin.settings.isReadingNote = value
-                    await this.plugin.saveSettings();
-                })
-        )
-
-        new Setting(containerEl)
-        .setName("展厅")
-        .setDesc( "在指定笔记中的任何位置写 %%quote|n%% \n\n %%quote-end%% \n\n 那么，当每次打开指定笔记时，会从阅读笔记中随机抽取 n 条笔记进行展示")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isDailyQuite)
-                .onChange(async (value) => {
-                    this.plugin.settings.isDailyQuite = value
-                    await this.plugin.saveSettings();
-                })
-        )
-
-        new Setting(containerEl)
-        .setName("多义笔记转跳")
-        .setDesc("在 yaml 中声明 `to: [[实义笔记名]]`，打开声明笔记将转跳至实义笔记")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isPolysemy)
-                .onChange(async (value) => {
-                    this.plugin.settings.isPolysemy = value
-                    await this.plugin.saveSettings();
-                })
-        )
-
-    
-        containerEl.createEl('h1', { text: "阅读时长及进度"})
-        
-        new Setting(containerEl)
-        .setName("跟踪哪个文件夹（同时，为跟踪的笔记打上 book 标签）")
-        .addText((text) =>
-            text
-                .setValue(this.plugin.settings.watchFolder)
-                .onChange(async (value) => {
-                    this.plugin.settings.watchFolder = value;
-                    await this.plugin.saveSettings();
-                })
-        );
-
-        new Setting(containerEl)
-        .setName("超时")
-        .setDesc("未点击屏幕超过多少秒后暂停跟踪阅读时长及进度，已获得准确的跟踪记录")
-        .addText((text) =>
-            text
-                .setValue("" + this.plugin.settings.watchTimeout / 1000)
-                .onChange(async (value) => {
-                    this.plugin.settings.watchTimeout = Number(value) * 1000
-                    await this.plugin.saveSettings();
-                })
-        )
-
-        new Setting(containerEl)
-        .setName("延迟")
-        .setDesc("延迟多少秒写入跟踪数据，提升在阅读器上的流畅性")
-        .addText((text) =>
-            text
-                .setValue("" + this.plugin.settings.watchDelayTime / 1000)
-                .onChange(async (value) => {
-                    this.plugin.settings.watchDelayTime = Number(value) * 1000
-                    await this.plugin.saveSettings();
-                })
-        )
-
-        containerEl.createEl('h1', { text: "翻页 "})
-
-        new Setting(containerEl)
-            .setName("修正值")
-            .addText((text) =>
-                text
-                    .setValue("" + this.plugin.settings.filpRevise)
+            .setName("⏱ 跟踪阅读时长、进度及状态")
+            .setDesc("- 每本书都是单个 markdown 文件，不建议拆分章节，不超过 2mb \n- 放至指定的跟踪根目录 \n- 设置 book 标签")
+            .addToggle((cd) =>
+                cd
+                    .setValue(this.plugin.settings.watch)
                     .onChange(async (value) => {
-                        this.plugin.settings.filpRevise = Number(value)
-                        await this.plugin.saveSettings();
+                        this.plugin.settings.watch = value
+                        await this.plugin.saveSettings()
+                        this.display()
                     })
             )
-        
 
-        containerEl.createEl('h1', { text: "同步读书笔记 "})
-
+        if (this.plugin.settings.watch) {
+            new Setting(containerEl)
+                .setName("跟踪目录")
+                .addText((cd) =>
+                    cd
+                        .setValue(this.plugin.settings.folder)
+                        .onChange(async (value) => {
+                            this.plugin.settings.folder = value
+                            await this.plugin.saveSettings()
+                        })
+            )
+            
+            new Setting(containerEl)
+                .setName("超时")
+                .setDesc(`超过一段时间未翻页将暂停跟踪，以获得更准确的数据。`)
+                .addText((cd) =>
+                    cd
+                        .setValue("" + this.plugin.settings.timeout / 1000)
+                        .onChange(async (value) => {
+                            this.plugin.settings.timeout = Number(value) * 1000
+                            await this.plugin.saveSettings()
+                        })
+            )
+            
+            new Setting(containerEl)
+                .setName("跟踪数据延迟更新")
+                .setDesc("在某些老旧水墨屏设备或者单文件体积过大，每次更新跟踪数据都会导致翻页明显滞后，设置延迟以大幅提升翻页流畅性")
+                .addText((text) =>
+                    text
+                        .setValue("" + this.plugin.settings.delayTime / 1000)
+                        .onChange(async (value) => {
+                            this.plugin.settings.delayTime = Number(value) * 1000
+                            await this.plugin.saveSettings()
+                        })
+            )
+        }
 
         new Setting(containerEl)
-            .setName("读书笔记同步至哪个文件夹")
-            .addText((text) =>
-                text
-                    .setValue("" + this.plugin.settings.readingNoteToFolder)
+            .setName("👇🏼 翻页")
+            .addToggle((cd) =>
+                cd
+                    .setValue(this.plugin.settings.filp)
                     .onChange(async (value) => {
-                        this.plugin.settings.readingNoteToFolder = value
-                        await this.plugin.saveSettings();
+                        this.plugin.settings.filp = value
+                        await this.plugin.saveSettings()
+                        this.display()
                     })
-            ) 
-    
-        new Setting(containerEl)
-        .setName("同步出链")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isOutlink)
-                .onChange(async (value) => {
-                    this.plugin.settings.isOutlink = value
-                    await this.plugin.saveSettings();
-                })
-        )  
-
-        new Setting(containerEl)
-        .setName("同步元字段")
-        .setDesc('书库的书添加划线数量，想法数量，出链数量的元字段')
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isOutlink)
-                .onChange(async (value) => {
-                    this.plugin.settings.isOutlink = value
-                    await this.plugin.saveSettings();
-                })
-        )  
-                
-        new Setting(containerEl)
-        .setName("添加块id")
-        .setDesc("开启后，为每条笔记添加块id，划线内容不更改的情况下，同步读书笔记块id不变。因此，可以在其他地方进行引用")
-        .addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.isBlockId)
-                .onChange(async (value) => {
-                    this.plugin.settings.isBlockId = value
-                    await this.plugin.saveSettings();
-                })
         ) 
 
-        containerEl.createEl('h1', { text: "展厅"})
+        if (this.plugin.settings.filp) {
+            new Setting(containerEl)
+                .setName("修正值")
+                .addText((cd) =>
+                    cd
+                        .setValue("" + this.plugin.settings.filpRevise)
+                        .onChange(async (value) => {
+                            this.plugin.settings.filpRevise = Number(value)
+                            await this.plugin.saveSettings()
+                        })
+                )
+        }
+      
+        new Setting(containerEl)
+            .setName("📓 读书笔记")
+            .addToggle((cd) =>
+                cd
+                    .setValue(this.plugin.settings.readingNotes)
+                    .onChange(async (value) => {
+                        this.plugin.settings.readingNotes = value
+                        await this.plugin.saveSettings()
+                        this.display()
+                    })
+            )
+
+        if (this.plugin.settings.readingNotes) {
+            new Setting(containerEl)
+                .setName("同步至哪个目录")
+                .addText((cd) =>
+                    cd
+                        .setValue("" + this.plugin.settings.readingNotesToFolder)
+                        .onChange(async (value) => {
+                            this.plugin.settings.readingNotesToFolder = value
+                            await this.plugin.saveSettings()
+                        })
+                ) 
+
+            new Setting(containerEl)
+                .setName("同步出链")
+                .addToggle((cd) =>
+                    cd
+                        .setValue(this.plugin.settings.outlink)
+                        .onChange(async (value) => {
+                            this.plugin.settings.outlink = value
+                            await this.plugin.saveSettings()
+                        })
+                )  
+
+            new Setting(containerEl)
+                .setName("同步元字段")
+                .setDesc('每本书添加划线，想法和出链数量元字段')
+                .addToggle((cd) =>
+                    cd
+                        .setValue(this.plugin.settings.frontmatter)
+                        .onChange(async (value) => {
+                            this.plugin.settings.frontmatter = value
+                            await this.plugin.saveSettings()
+                        })
+                )  
+                    
+            new Setting(containerEl)
+                .setName("添加块id")
+                .setDesc("在每条读书笔记句尾添加块id。划线内容不更改，id也不会更改。因此，可以在其他地方引用读书笔记")
+                .addToggle((cd) =>
+                    cd
+                        .setValue(this.plugin.settings.blockId)
+                        .onChange(async (value) => {
+                            this.plugin.settings.blockId = value
+                            await this.plugin.saveSettings()
+                        })
+                ) 
+        }   
 
         new Setting(containerEl)
-        .setName("指定哪个笔记")
-        .addText((text) =>
-            text
-                .setValue("" + this.plugin.settings.dailyQuiteTo)
+        .setName("🎗️ 展厅")
+        .addToggle((cd) =>
+            cd
+                .setValue(this.plugin.settings.dailyQuite)
                 .onChange(async (value) => {
-                    this.plugin.settings.dailyQuiteTo = value
-                    await this.plugin.saveSettings();
+                    this.plugin.settings.dailyQuite = value
+                    await this.plugin.saveSettings()
+                    this.display()
                 })
-        )     
+        )
 
-        containerEl.createEl('h1', { text: "多义笔记转跳"})
-
-
+        if (this.plugin.settings.dailyQuite) {
+            new Setting(containerEl)
+                .setName("指定笔记")
+                .addText((cd) =>
+                cd
+                    .setValue("" + this.plugin.settings.dailyQuiteTo)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dailyQuiteTo = value
+                        await this.plugin.saveSettings()
+                    })
+            )     
+        }
+        
         new Setting(containerEl)
-            .setName("指定多义笔记转跳的文件夹")
-            .addText((text) =>
-                text
+        .setName("🔗 多义笔记转跳")
+        .addToggle((cd) =>
+            cd
+                .setValue(this.plugin.settings.polysemy)
+                .onChange(async (value) => {
+                    this.plugin.settings.polysemy = value
+                    await this.plugin.saveSettings()
+                    this.display()
+                })
+        )
+
+        if (this.plugin.settings.polysemy) {
+            new Setting(containerEl)
+                .setName("指定目录")
+                .addText((cd) =>
+                cd
                     .setValue("" + this.plugin.settings.polysemyFolder)
                     .onChange(async (value) => {
                         this.plugin.settings.polysemyFolder = value
-                        await this.plugin.saveSettings();
+                        await this.plugin.saveSettings()
                     })
             )
+        }
+    
 
-            containerEl.createEl('h1', { text: "其他"})
+        containerEl.createEl('h2', { text: "指令"})
 
-            new Setting(containerEl)
-                .setName("创建卡片笔记放至哪个文件夹")
-                .addText((text) =>
-                    text
-                        .setValue("" + this.plugin.settings.createNoteToFolder)
-                        .onChange(async (value) => {
-                            this.plugin.settings.createNoteToFolder = value
-                            await this.plugin.saveSettings();
-                        })
-                )
+        new Setting(containerEl)
+            .setName("创建卡片笔记放至哪个文件夹")
+            .addText((text) =>
+                text
+                    .setValue("" + this.plugin.settings.createNoteToFolder)
+                    .onChange(async (value) => {
+                        this.plugin.settings.createNoteToFolder = value
+                        await this.plugin.saveSettings()
+                    })
+            )
     }
 }
