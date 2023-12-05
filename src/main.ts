@@ -265,7 +265,7 @@ export default class Toolbox extends Plugin {
 	highlight (editor: Editor, view: MarkdownView) {
 		let selection = editor.getSelection()
 		let blockId = getBlock(this.app, editor, view.file)
-		new InputBox(this.app, async res => {
+		new InputBox(this.app, selection, async res => {
 				res = res ? `%%💬${res}💬%%` : ""
 				editor.replaceSelection(`==${selection}${res}%%^${blockId}^%%==`)
 			}).open()
