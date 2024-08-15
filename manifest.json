@@ -1,9 +1,9 @@
 {
-	"id": "toolbox",
-	"name": "Toolbox",
-	"version": "0.0.1",
+	"id": "Read Plan",
+	"name": "Read Plan",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "工具箱",
+	"description": "在 obsidian 上进行阅读书籍的解决方案",
 	"author": "叫我包仔",
 	"authorUrl": "https://obsidian.md",
 	"fundingUrl": "https://obsidian.md/pricing",

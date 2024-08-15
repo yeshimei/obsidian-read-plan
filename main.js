@@ -674,8 +674,6 @@ var DEFAULT_SETTINGS = {
   frontmatter: true,
   dailyQuite: true,
   dailyQuiteTo: "\u4E3B\u9875",
-  polysemy: true,
-  polysemyFolder: "\u5361\u7247\u76D2",
   createNoteToFolder: "\u5361\u7247\u76D2",
   strictProgress: true
 };
@@ -792,21 +790,6 @@ var ToolboxSettingTab = class extends import_obsidian.PluginSettingTab {
         })
       );
     }
-    new import_obsidian.Setting(containerEl).setName("\u{1F517} \u591A\u4E49\u7B14\u8BB0\u8F6C\u8DF3").addToggle(
-      (cd) => cd.setValue(this.plugin.settings.polysemy).onChange(async (value) => {
-        this.plugin.settings.polysemy = value;
-        await this.plugin.saveSettings();
-        this.display();
-      })
-    );
-    if (this.plugin.settings.polysemy) {
-      new import_obsidian.Setting(containerEl).setName("\u6307\u5B9A\u76EE\u5F55").addText(
-        (cd) => cd.setValue("" + this.plugin.settings.polysemyFolder).onChange(async (value) => {
-          this.plugin.settings.polysemyFolder = value;
-          await this.plugin.saveSettings();
-        })
-      );
-    }
     containerEl.createEl("h2", { text: "\u6307\u4EE4" });
     new import_obsidian.Setting(containerEl).setName("\u521B\u5EFA\u5361\u7247\u7B14\u8BB0\u653E\u81F3\u54EA\u4E2A\u6587\u4EF6\u5939").addText(
       (text) => text.setValue("" + this.plugin.settings.createNoteToFolder).onChange(async (value) => {
@@ -884,8 +867,6 @@ var Toolbox = class extends import_obsidian4.Plugin {
           return;
         if (file.path === this.settings.dailyQuiteTo + ".md")
           this.dailyQuite();
-        if (file.parent.path === this.settings.polysemyFolder)
-          this.polysemy(file);
         if (file.parent.path === this.settings.folder) {
           let startTime = Date.now();
           const view = this.getView();
@@ -1067,28 +1048,6 @@ ${outlinks.join(" / ")}`);
         res && this.updateFrontmatter(file, "completionDate", today());
       }
     ).open();
-  }
-  polysemy(file) {
-    var _a, _b, _c;
-    if (!this.settings.polysemy)
-      return;
-    const to = (_b = (_a = this.app.metadataCache.getFileCache(file)) == null ? void 0 : _a.frontmatter) == null ? void 0 : _b.to;
-    if (to) {
-      let filiname = (_c = to.match(/\[\[(.*)\]\]/)) == null ? void 0 : _c[1];
-      let targetFile = this.openFile(
-        this.settings.polysemyFolder + "/" + filiname + ".md"
-      );
-      if (targetFile) {
-        const view = this.app.workspace.getLeaf();
-        const LastOpenFiles = this.app.workspace.getLastOpenFiles();
-        if (LastOpenFiles[1] !== file.path) {
-          view.openFile(targetFile);
-          this.notice(
-            `\u300A${file.basename}\u300B\u662F\u4E00\u7BC7\u591A\u4E49\u7B14\u8BB0\uFF0C\u5DF2\u8F6C\u8DF3\u81F3\u300A${filiname}\u300B `
-          );
-        }
-      }
-    }
   }
   updateMetadata(file) {
     if (this.settings.frontmatter) {

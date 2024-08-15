@@ -1,4 +1,4 @@
-import { App, Component, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import Toolbox from "./main";
 
 export interface ToolboxSettings {
@@ -15,8 +15,6 @@ export interface ToolboxSettings {
 	frontmatter: boolean;
 	dailyQuite: boolean;
 	dailyQuiteTo: string;
-	polysemy: boolean;
-	polysemyFolder: string;
 	createNoteToFolder: string;
 	strictProgress: boolean;
 }
@@ -25,7 +23,7 @@ export const DEFAULT_SETTINGS: ToolboxSettings = {
 	watch: true,
 	folder: "书库",
 	timeout: 1000 * 60 * 5,
-	delayTime: 1000 * 3,
+	delayTime: 1000 * 1,
 	filp: true,
 	filpRevise: -80,
 	readingNotes: true,
@@ -35,8 +33,6 @@ export const DEFAULT_SETTINGS: ToolboxSettings = {
 	frontmatter: true,
 	dailyQuite: true,
 	dailyQuiteTo: "主页",
-	polysemy: true,
-	polysemyFolder: "卡片盒",
 	createNoteToFolder: "卡片盒",
 	strictProgress: true,
 };
@@ -212,27 +208,6 @@ export class ToolboxSettingTab extends PluginSettingTab {
 					.setValue("" + this.plugin.settings.dailyQuiteTo)
 					.onChange(async (value) => {
 						this.plugin.settings.dailyQuiteTo = value;
-						await this.plugin.saveSettings();
-					})
-			);
-		}
-
-		new Setting(containerEl).setName("🔗 多义笔记转跳").addToggle((cd) =>
-			cd
-				.setValue(this.plugin.settings.polysemy)
-				.onChange(async (value) => {
-					this.plugin.settings.polysemy = value;
-					await this.plugin.saveSettings();
-					this.display();
-				})
-		);
-
-		if (this.plugin.settings.polysemy) {
-			new Setting(containerEl).setName("指定目录").addText((cd) =>
-				cd
-					.setValue("" + this.plugin.settings.polysemyFolder)
-					.onChange(async (value) => {
-						this.plugin.settings.polysemyFolder = value;
 						await this.plugin.saveSettings();
 					})
 			);

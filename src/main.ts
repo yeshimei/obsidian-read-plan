@@ -1,11 +1,4 @@
-import {
-	Plugin,
-	MarkdownView,
-	Editor,
-	Notice,
-	TFile,
-	MomentFormatComponent,
-} from "obsidian";
+import { Plugin, MarkdownView, Editor, Notice, TFile } from "obsidian";
 import { today, getBlock, sure } from "./helpers";
 
 import {
@@ -48,8 +41,6 @@ export default class Toolbox extends Plugin {
 
 				if (file.path === this.settings.dailyQuiteTo + ".md")
 					this.dailyQuite();
-				if (file.parent.path === this.settings.polysemyFolder)
-					this.polysemy(file);
 
 				if (file.parent.path === this.settings.folder) {
 					let startTime = Date.now();
@@ -65,15 +56,6 @@ export default class Toolbox extends Plugin {
 						if (view.getMode() === "source") return;
 						this.filp(viewEl);
 						if (!this.settings.watch) return;
-						/**
-						 * 延迟写入跟踪数据以提升阅读器上的翻页流畅性
-						 *
-						 * 在某些老旧阅读器设备或者单文件体积过大，
-						 * 元数据的每次更新都会导致翻页明显滞后，
-						 * 这也是延迟跟踪更新的必要性数据。
-						 * 同时，连续翻页时也同样流畅。
-						 *
-						 */
 						clearTimeout(this.timer);
 						this.timer = window.setTimeout(() => {
 							this.app.fileManager.processFrontMatter(
@@ -289,27 +271,6 @@ export default class Toolbox extends Plugin {
 				res && this.updateFrontmatter(file, "completionDate", today());
 			}
 		).open();
-	}
-
-	polysemy(file: TFile) {
-		if (!this.settings.polysemy) return;
-		const to = this.app.metadataCache.getFileCache(file)?.frontmatter?.to;
-		if (to) {
-			let filiname = to.match(/\[\[(.*)\]\]/)?.[1];
-			let targetFile = this.openFile(
-				this.settings.polysemyFolder + "/" + filiname + ".md"
-			);
-			if (targetFile) {
-				const view = this.app.workspace.getLeaf();
-				const LastOpenFiles = this.app.workspace.getLastOpenFiles();
-				if (LastOpenFiles[1] !== file.path) {
-					view.openFile(targetFile);
-					this.notice(
-						`《${file.basename}》是一篇多义笔记，已转跳至《${filiname}》 `
-					);
-				}
-			}
-		}
 	}
 
 	updateMetadata(file: TFile) {
